@@ -17,11 +17,13 @@ interface ActiveGeneration {
 
 export interface QueryBackedTitleGenerationServiceOptions {
   createRunner: () => AuxQueryRunner;
+  resetRunnerAfterQuery?: boolean;
   resolveModel?: () => string | undefined;
 }
 
 export class QueryBackedTitleGenerationService implements TitleGenerationService {
   private readonly activeGenerations = new Map<string, ActiveGeneration>();
+  private readonly idleRunners: AuxQueryRunner[] = [];
 
   constructor(private readonly options: QueryBackedTitleGenerationServiceOptions) {}
 
@@ -37,9 +39,10 @@ export class QueryBackedTitleGenerationService implements TitleGenerationService
     }
 
     const abortController = new AbortController();
-    const runner = this.options.createRunner();
+    const runner = this.acquireRunner();
     const generation = { abortController, runner };
     this.activeGenerations.set(conversationId, generation);
+    let queryCompleted = false;
 
     try {
       const text = await runner.query({
@@ -47,6 +50,7 @@ export class QueryBackedTitleGenerationService implements TitleGenerationService
         model: this.options.resolveModel?.(),
         systemPrompt: TITLE_GENERATION_SYSTEM_PROMPT,
       }, buildTitleGenerationPrompt(userMessage));
+      queryCompleted = true;
       const title = parseTitleGenerationResponse(text);
       await this.safeCallback(
         callback,
@@ -61,8 +65,20 @@ export class QueryBackedTitleGenerationService implements TitleGenerationService
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
-      runner.reset();
-      if (this.activeGenerations.get(conversationId) === generation) {
+      const isCurrentGeneration = this.activeGenerations.get(conversationId) === generation;
+      if (this.shouldReuseRunner({
+        abortController,
+        isCurrentGeneration,
+        queryCompleted,
+        runner,
+      })) {
+        this.resetRunnerConversation(runner);
+        this.idleRunners.push(runner);
+      } else {
+        runner.reset();
+      }
+
+      if (isCurrentGeneration) {
         this.activeGenerations.delete(conversationId);
       }
     }
@@ -74,6 +90,33 @@ export class QueryBackedTitleGenerationService implements TitleGenerationService
       active.runner.reset();
     }
     this.activeGenerations.clear();
+
+    for (const runner of this.idleRunners.splice(0)) {
+      runner.reset();
+    }
+  }
+
+  private acquireRunner(): AuxQueryRunner {
+    return this.idleRunners.pop() ?? this.options.createRunner();
+  }
+
+  private shouldReuseRunner(params: {
+    abortController: AbortController;
+    isCurrentGeneration: boolean;
+    queryCompleted: boolean;
+    runner: AuxQueryRunner;
+  }): boolean {
+    return this.options.resetRunnerAfterQuery === false
+      && params.isCurrentGeneration
+      && params.queryCompleted
+      && typeof params.runner.resetConversation === 'function'
+      && !params.abortController.signal.aborted;
+  }
+
+  private resetRunnerConversation(runner: AuxQueryRunner): void {
+    if (runner.resetConversation) {
+      runner.resetConversation();
+    }
   }
 
   private async safeCallback(

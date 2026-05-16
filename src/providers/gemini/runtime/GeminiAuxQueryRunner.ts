@@ -132,11 +132,9 @@ export class GeminiAuxQueryRunner implements AuxQueryRunner {
   }
 
   reset(): void {
-    this.availableModelIds.clear();
-    this.sessionId = null;
-    this.sessionCwds.clear();
-    this.currentModelId = null;
+    this.resetConversation();
     this.currentLaunchKey = null;
+    this.availableModelIds.clear();
     this.connection?.dispose();
     this.connection = null;
     this.transport?.dispose();
@@ -145,6 +143,12 @@ export class GeminiAuxQueryRunner implements AuxQueryRunner {
       void this.process.shutdown().catch(() => {});
     }
     this.process = null;
+  }
+
+  resetConversation(): void {
+    this.sessionId = null;
+    this.sessionCwds.clear();
+    this.currentModelId = null;
     this.sessionUpdateNormalizer.reset();
   }
 

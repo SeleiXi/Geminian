@@ -20,7 +20,11 @@ export class QueryBackedInstructionRefineService implements InstructionRefineSer
   }
 
   resetConversation(): void {
-    this.runner.reset();
+    if (this.runner.resetConversation) {
+      this.runner.resetConversation();
+    } else {
+      this.runner.reset();
+    }
     this.hasConversation = false;
   }
 

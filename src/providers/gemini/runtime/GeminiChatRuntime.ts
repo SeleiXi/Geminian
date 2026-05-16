@@ -33,7 +33,7 @@ import type {
   ToolCallInfo,
 } from '../../../core/types';
 import type ClaudianPlugin from '../../../main';
-import { getEnhancedPath } from '../../../utils/env';
+import { getEnhancedPath, getMissingNodeError } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import {
   AcpClientConnection,
@@ -75,6 +75,8 @@ import {
   resolveGeminiBaseModelRawId,
 } from '../models';
 import {
+  GEMINI_BUILD_MODE_ID,
+  GEMINI_YOLO_MODE_ID,
   getManagedGeminiModes,
   isManagedGeminiModeId,
   normalizeGeminiAvailableModes,
@@ -322,8 +324,10 @@ export class GeminiChatRuntime implements ChatRuntime {
 
     const activeTurn = this.activeTurn;
     try {
-      await this.applySelectedMode(sessionId);
-      await this.applySelectedModel(sessionId, queryOptions);
+      await Promise.all([
+        this.applySelectedMode(sessionId),
+        this.applySelectedModel(sessionId, queryOptions),
+      ]);
     } catch (error) {
       yield {
         type: 'error',
@@ -582,7 +586,7 @@ export class GeminiChatRuntime implements ChatRuntime {
       }
 
       console.error('[Claudian] Gemini Initialization Error:', diagnostic, error);
-      throw new Error(diagnostic);
+      throw new Error(diagnostic, { cause: error });
     }
     this.setReady(true);
   }

@@ -8,4 +8,5 @@ export interface AuxQueryConfig {
 export interface AuxQueryRunner {
   query(config: AuxQueryConfig, prompt: string): Promise<string>;
   reset(): void;
+  resetConversation?(): void;
 }

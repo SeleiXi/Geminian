@@ -11,6 +11,7 @@ export class GeminiTitleGenerationService extends QueryBackedTitleGenerationServ
         agentProfile: 'passive',
         artifactPurpose: 'title-gen',
       }),
+      resetRunnerAfterQuery: false,
       resolveModel: () => {
         const settings = plugin.settings as unknown as Record<string, unknown>;
         const titleModel = typeof settings.titleGenerationModel === 'string'

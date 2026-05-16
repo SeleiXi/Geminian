@@ -24,7 +24,11 @@ export class QueryBackedInlineEditService implements InlineEditService {
   }
 
   resetConversation(): void {
-    this.runner.reset();
+    if (this.runner.resetConversation) {
+      this.runner.resetConversation();
+    } else {
+      this.runner.reset();
+    }
     this.hasConversation = false;
   }
 

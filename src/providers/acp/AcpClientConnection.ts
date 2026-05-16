@@ -36,6 +36,8 @@ import type {
   AcpSessionNotification,
   AcpSetSessionConfigOptionRequest,
   AcpSetSessionConfigOptionResponse,
+  AcpSetSessionModelRequest,
+  AcpSetSessionModelResponse,
   AcpSetSessionModeRequest,
   AcpSetSessionModeResponse,
   AcpTerminalOutputRequest,
