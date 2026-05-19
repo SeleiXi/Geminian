@@ -1846,6 +1846,50 @@ describe('TabManager - Provider Command Catalog', () => {
     releaseWarmup();
   });
 
+  it('primes runtime_no_session tabs without creating a provider session', async () => {
+    const runtimeNoSessionPolicy = { resolveMode: jest.fn().mockReturnValue('runtime_no_session') };
+    ProviderWorkspaceRegistry.setServices('gemini', {
+      tabWarmupPolicy: runtimeNoSessionPolicy as any,
+    });
+    mockGetCapabilities.mockImplementation((providerId: string) => ({
+      providerId,
+      supportsPersistentRuntime: true,
+      supportsNativeHistory: true,
+      supportsPlanMode: false,
+      supportsRewind: false,
+      supportsFork: false,
+      supportsProviderCommands: false,
+      supportsImageAttachments: false,
+      supportsInstructionMode: false,
+      supportsMcpTools: false,
+      reasoningControl: 'none',
+    }));
+
+    const ensureReady = jest.fn().mockResolvedValue(true);
+    const syncConversationState = jest.fn();
+    const manager = createManager({
+      tabFactory: () => createMockTabData({
+        id: 'tab-gemini',
+        providerId: 'gemini',
+        lifecycleState: 'blank',
+        serviceInitialized: true,
+        service: {
+          providerId: 'gemini',
+          ensureReady,
+          isReady: jest.fn().mockReturnValue(false),
+          syncConversationState,
+        },
+      }),
+    });
+
+    await manager.createTab();
+    await flushMicrotasks();
+
+    expect(syncConversationState).toHaveBeenCalledWith(null, []);
+    expect(ensureReady).toHaveBeenCalledWith({ allowSessionCreation: false });
+    expect(mockInitializeTabService).not.toHaveBeenCalled();
+  });
+
   it('should return null catalog config when provider has no catalog', async () => {
     // No catalog assigned to registry for 'claude'
 

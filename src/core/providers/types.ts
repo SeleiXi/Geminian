@@ -309,7 +309,9 @@ export interface ProviderRuntimeCommandLoader {
 
 // `commands` warms provider-owned command discovery without fully priming the
 // bound tab runtime. `runtime` primes the real tab runtime itself.
-export type ProviderTabWarmupMode = 'none' | 'commands' | 'runtime';
+// `runtime_no_session` starts the real runtime transport without creating a
+// provider session, useful for CLIs where session creation scans the workspace.
+export type ProviderTabWarmupMode = 'none' | 'commands' | 'runtime' | 'runtime_no_session';
 
 export type ProviderTabWarmupLifecycleState = 'blank' | 'bound_cold' | 'bound_active' | 'closing';
 

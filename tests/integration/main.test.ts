@@ -91,6 +91,26 @@ describe('ClaudianPlugin', () => {
       );
     });
 
+    it('should prime Gemini tabs after the Obsidian layout is ready', async () => {
+      let layoutReadyCallback: (() => void) | null = null;
+      mockApp.workspace.onLayoutReady = jest.fn((callback: () => void) => {
+        layoutReadyCallback = callback;
+      });
+      const primeProviderRuntime = jest.fn();
+      mockApp.workspace.getLeavesOfType.mockReturnValue([{
+        view: {
+          getTabManager: jest.fn().mockReturnValue({ primeProviderRuntime }),
+        },
+      }]);
+
+      await plugin.onload();
+      expect(layoutReadyCallback).not.toBeNull();
+      (layoutReadyCallback as unknown as () => void)();
+
+      expect(mockApp.workspace.onLayoutReady).toHaveBeenCalledWith(expect.any(Function));
+      expect(primeProviderRuntime).toHaveBeenCalledWith('gemini');
+    });
+
     it('should add ribbon icon', async () => {
       await plugin.onload();
 

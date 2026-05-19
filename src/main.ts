@@ -60,6 +60,8 @@ export default class ClaudianPlugin extends Plugin {
       (leaf) => new ClaudianView(leaf, this)
     );
 
+    this.registerStartupProviderWarmup();
+
     this.addRibbonIcon('bot', 'Open Claudian', () => {
       this.activateView();
     });
@@ -184,6 +186,18 @@ export default class ClaudianPlugin extends Plugin {
         const state = tabManager.getPersistedState();
         await this.persistTabManagerState(state);
       }
+    }
+  }
+
+  private registerStartupProviderWarmup(): void {
+    this.app.workspace.onLayoutReady?.(() => {
+      this.primeStartupProviderRuntimes();
+    });
+  }
+
+  private primeStartupProviderRuntimes(): void {
+    for (const view of this.getAllViews()) {
+      view.getTabManager()?.primeProviderRuntime('gemini');
     }
   }
 

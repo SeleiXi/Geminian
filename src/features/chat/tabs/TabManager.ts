@@ -803,6 +803,11 @@ export class TabManager implements TabManagerInterface {
       case 'runtime':
         await this.ensureProviderTabRuntimeReady(tab, providerId, context);
         return;
+      case 'runtime_no_session':
+        await this.ensureProviderTabRuntimeReady(tab, providerId, context, {
+          allowSessionCreation: false,
+        });
+        return;
       default:
         return;
     }
@@ -812,6 +817,7 @@ export class TabManager implements TabManagerInterface {
     tab: TabData,
     providerId: ProviderId,
     context: ProviderWarmupContext,
+    ensureOptions: { allowSessionCreation?: boolean } = {},
   ): Promise<void> {
     if (!context.runtime || context.runtime.providerId !== providerId || !tab.serviceInitialized) {
       await initializeTabService(tab, this.plugin, context.conversation);
@@ -824,7 +830,7 @@ export class TabManager implements TabManagerInterface {
     }
 
     runtime.syncConversationState(context.conversation, context.externalContextPaths);
-    await runtime.ensureReady();
+    await runtime.ensureReady(ensureOptions);
     if (ProviderRegistry.getCapabilities(providerId).supportsProviderCommands) {
       await this.getSdkCommands(tab.id);
     }

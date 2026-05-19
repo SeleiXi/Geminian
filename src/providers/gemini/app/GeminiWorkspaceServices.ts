@@ -19,15 +19,16 @@ export interface GeminiWorkspaceServices extends ProviderWorkspaceServices {
   commandCatalog: ProviderCommandCatalog;
 }
 
-const geminiTabWarmupPolicy: ProviderTabWarmupPolicy = {
+export const geminiTabWarmupPolicy: ProviderTabWarmupPolicy = {
   resolveMode(context) {
     const hasMessages = (context.conversation?.messages.length ?? 0) > 0;
-    if (
-      context.tab.lifecycleState === 'blank'
-      || context.conversation?.sessionId
-      || !hasMessages
-    ) {
+
+    if (context.conversation?.sessionId) {
       return 'runtime';
+    }
+
+    if (context.tab.lifecycleState === 'blank' || !hasMessages) {
+      return 'runtime_no_session';
     }
 
     return 'commands';
