@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 
 import type { SystemPromptSettings } from '../../../core/prompt/mainAgent';
@@ -85,14 +87,22 @@ import {
 } from '../modes';
 import { createGeminiToolStreamAdapter } from '../normalization/geminiToolNormalization';
 import { getGeminiProviderSettings, updateGeminiProviderSettings } from '../settings';
-import { type GeminiProviderState,getGeminiState } from '../types';
+import { type GeminiProviderState, getGeminiState } from '../types';
 import { buildGeminiPromptBlocks, buildGeminiPromptText } from './buildGeminiPrompt';
 import { GEMINI_ACP_ARGS, GEMINI_ACP_REQUEST_TIMEOUT_MS } from './geminiAcpLaunch';
 import { buildGeminiRuntimeEnv } from './GeminiRuntimeEnvironment';
 
+const GEMINI_NEUTRAL_WORKSPACE_DIR = 'claudian-gemini-acp';
+
 interface ActiveTurn {
   queue: StreamChunkQueue;
   sessionId: string;
+}
+
+interface GeminiWorkspaceContext {
+  cwd: string;
+  pathMappings?: Map<string, string>;
+  promptRequest: ChatTurnRequest;
 }
 
 class StreamChunkQueue {
@@ -157,6 +167,7 @@ export class GeminiChatRuntime implements ChatRuntime {
   private readonly supportedCommandWaiters: Array<(commands: SlashCommand[]) => void> = [];
   private supportedCommands: SlashCommand[] = [];
   private sessionCwds = new Map<string, string>();
+  private sessionPathMappings = new Map<string, Map<string, string>>();
   private sessionId: string | null = null;
   private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer();
   private readonly toolStreamAdapter = createGeminiToolStreamAdapter();
@@ -224,7 +235,7 @@ export class GeminiChatRuntime implements ChatRuntime {
       return false;
     }
 
-    const cwd = getVaultPath(this.plugin.app) ?? process.cwd();
+    const cwd = await this.resolveEnsureReadyCwd(options);
     const targetSessionId = this.sessionId;
     const resolvedCliPath = this.plugin.getResolvedProviderCliPath('gemini') ?? 'gemini';
     const runtimeEnv = this.buildRuntimeEnv(
@@ -285,7 +296,7 @@ export class GeminiChatRuntime implements ChatRuntime {
     let shouldBootstrapHistory = previousMessages.length > 0
       && (!expectedSessionId || this.sessionInvalidated);
 
-    if (!(await this.ensureReady())) {
+    if (!(await this.ensureReady(expectedSessionId ? undefined : { allowSessionCreation: false }))) {
       yield { type: 'error', content: 'Failed to start Gemini. Check the CLI path and login state.' };
       yield { type: 'done' };
       return;
@@ -297,13 +308,21 @@ export class GeminiChatRuntime implements ChatRuntime {
       return;
     }
 
-    const cwd = getVaultPath(this.plugin.app) ?? process.cwd();
+    const workspaceContext = this.sessionId
+      ? {
+        cwd: this.sessionCwds.get(this.sessionId) ?? this.getVaultCwd(),
+        promptRequest: this.buildPromptRequest(turn.request),
+      }
+      : await this.buildFirstQueryWorkspaceContext(turn.request);
     if (expectedSessionId && !this.sessionId) {
       shouldBootstrapHistory = previousMessages.length > 0;
     }
 
     if (!this.sessionId) {
-      const sessionId = await this.createSession(cwd);
+      const sessionId = await this.createSession(
+        workspaceContext.cwd,
+        workspaceContext.pathMappings,
+      );
       if (!sessionId) {
         yield { type: 'error', content: 'Failed to create an Gemini session.' };
         yield { type: 'done' };
@@ -342,7 +361,7 @@ export class GeminiChatRuntime implements ChatRuntime {
 
     const promptPromise = this.connection.prompt({
       prompt: buildGeminiPromptBlocks(
-        turn.request,
+        workspaceContext.promptRequest,
         shouldBootstrapHistory ? previousMessages : [],
       ),
       sessionId,
@@ -643,6 +662,105 @@ export class GeminiChatRuntime implements ChatRuntime {
     );
   }
 
+  private getVaultCwd(): string {
+    return getVaultPath(this.plugin.app) ?? process.cwd();
+  }
+
+  private async getNeutralWorkspaceCwd(): Promise<string> {
+    const neutralCwd = path.join(os.tmpdir(), GEMINI_NEUTRAL_WORKSPACE_DIR);
+    try {
+      await fs.mkdir(neutralCwd, { recursive: true });
+      return neutralCwd;
+    } catch {
+      return process.cwd();
+    }
+  }
+
+  private async resolveEnsureReadyCwd(options?: ChatRuntimeEnsureReadyOptions): Promise<string> {
+    if (options?.allowSessionCreation === false && !this.sessionId) {
+      return await this.getNeutralWorkspaceCwd();
+    }
+
+    return this.getVaultCwd();
+  }
+
+  private async buildFirstQueryWorkspaceContext(request: ChatTurnRequest): Promise<GeminiWorkspaceContext> {
+    const currentNoteWorkspace = await this.tryBuildCurrentNoteWorkspaceContext(request.currentNotePath);
+    if (currentNoteWorkspace) {
+      return {
+        cwd: currentNoteWorkspace.cwd,
+        pathMappings: currentNoteWorkspace.pathMappings,
+        promptRequest: {
+          ...request,
+          currentNotePath: currentNoteWorkspace.promptNotePath,
+        },
+      };
+    }
+
+    return {
+      cwd: await this.getNeutralWorkspaceCwd(),
+      promptRequest: this.buildPromptRequest(request),
+    };
+  }
+
+  private async tryBuildCurrentNoteWorkspaceContext(notePath?: string): Promise<{
+    cwd: string;
+    pathMappings: Map<string, string>;
+    promptNotePath: string;
+  } | null> {
+    if (!notePath) {
+      return null;
+    }
+
+    const vaultPath = getVaultPath(this.plugin.app);
+    const realNotePath = path.resolve(path.isAbsolute(notePath) || !vaultPath
+      ? notePath
+      : path.join(vaultPath, notePath));
+    const stat = await fs.stat(realNotePath).catch(() => null);
+    if (!stat?.isFile()) {
+      return null;
+    }
+
+    const noteHash = createHash('sha256').update(realNotePath).digest('hex').slice(0, 16);
+    const cwd = path.join(os.tmpdir(), GEMINI_NEUTRAL_WORKSPACE_DIR, 'current-note', noteHash);
+    const promptNotePath = path.basename(realNotePath) || 'current-note.md';
+    const mirroredNotePath = path.join(cwd, promptNotePath);
+    await fs.rm(cwd, { force: true, recursive: true }).catch(() => {});
+    await fs.mkdir(cwd, { recursive: true });
+    await fs.copyFile(realNotePath, mirroredNotePath);
+
+    return {
+      cwd,
+      pathMappings: new Map([[mirroredNotePath, realNotePath]]),
+      promptNotePath,
+    };
+  }
+
+  private buildPromptRequest(request: ChatTurnRequest): ChatTurnRequest {
+    const currentNotePath = this.resolveCurrentNotePathForPrompt(request.currentNotePath);
+    if (!currentNotePath || currentNotePath === request.currentNotePath) {
+      return request;
+    }
+
+    return {
+      ...request,
+      currentNotePath,
+    };
+  }
+
+  private resolveCurrentNotePathForPrompt(notePath?: string): string | undefined {
+    if (!notePath) {
+      return undefined;
+    }
+
+    if (path.isAbsolute(notePath)) {
+      return notePath;
+    }
+
+    const vaultPath = getVaultPath(this.plugin.app);
+    return vaultPath ? path.join(vaultPath, notePath) : notePath;
+  }
+
   private getProviderSettings(): Record<string, unknown> {
     return ProviderSettingsCoordinator.getProviderSettingsSnapshot(
       this.plugin.settings as unknown as Record<string, unknown>,
@@ -941,7 +1059,10 @@ export class GeminiChatRuntime implements ChatRuntime {
     }
   }
 
-  private async createSession(cwd: string): Promise<string | null> {
+  private async createSession(
+    cwd: string,
+    pathMappings?: Map<string, string>,
+  ): Promise<string | null> {
     if (!this.connection) {
       return null;
     }
@@ -955,6 +1076,9 @@ export class GeminiChatRuntime implements ChatRuntime {
       this.loadedSessionId = response.sessionId;
       this.sessionId = response.sessionId;
       this.sessionCwds.set(response.sessionId, cwd);
+      if (pathMappings && pathMappings.size > 0) {
+        this.sessionPathMappings.set(response.sessionId, pathMappings);
+      }
       await this.syncSessionModelState({
         configOptions: response.configOptions ?? null,
         models: response.models ?? null,
@@ -985,6 +1109,7 @@ export class GeminiChatRuntime implements ChatRuntime {
       this.loadedSessionId = response.sessionId;
       this.sessionId = response.sessionId;
       this.sessionCwds.set(response.sessionId, cwd);
+      this.sessionPathMappings.delete(response.sessionId);
       await this.syncSessionModelState({
         configOptions: response.configOptions ?? null,
         models: response.models ?? null,
@@ -1177,7 +1302,8 @@ export class GeminiChatRuntime implements ChatRuntime {
     const cwd = this.sessionCwds.get(sessionId)
       ?? getVaultPath(this.plugin.app)
       ?? process.cwd();
-    return path.resolve(cwd, rawPath);
+    const resolvedPath = path.resolve(cwd, rawPath);
+    return this.sessionPathMappings.get(sessionId)?.get(resolvedPath) ?? resolvedPath;
   }
 
   private formatRuntimeError(error: unknown): string {
@@ -1190,6 +1316,7 @@ export class GeminiChatRuntime implements ChatRuntime {
     this.currentDatabasePath = null;
     this.sessionId = null;
     this.loadedSessionId = null;
+    this.sessionPathMappings.clear();
     this.currentSessionModelId = null;
     this.currentSessionModeId = null;
     this.setSupportedCommands([]);
