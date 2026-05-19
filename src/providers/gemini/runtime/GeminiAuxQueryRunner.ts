@@ -17,6 +17,7 @@ import {
 } from '../../acp';
 import { decodeGeminiModelId } from '../models';
 import { geminiChatUIConfig } from '../ui/GeminiChatUIConfig';
+import { GEMINI_ACP_ARGS, GEMINI_ACP_REQUEST_TIMEOUT_MS } from './geminiAcpLaunch';
 import { buildGeminiRuntimeEnv } from './GeminiRuntimeEnvironment';
 
 type GeminiAuxAgentProfile = 'passive' | 'readonly';
@@ -215,7 +216,7 @@ export class GeminiAuxQueryRunner implements AuxQueryRunner {
     };
 
     this.process = new AcpSubprocess({
-      args: ['--acp'],
+      args: [...GEMINI_ACP_ARGS],
       command: params.command,
       cwd: params.cwd,
       env: processEnv,
@@ -226,7 +227,7 @@ export class GeminiAuxQueryRunner implements AuxQueryRunner {
       input: this.process.stdout,
       onClose: (listener) => this.process!.onClose(listener),
       output: this.process.stdin,
-    });
+    }, GEMINI_ACP_REQUEST_TIMEOUT_MS);
 
     this.connection = new AcpClientConnection({
       clientInfo: {

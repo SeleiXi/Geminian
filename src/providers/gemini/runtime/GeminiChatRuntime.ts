@@ -87,6 +87,7 @@ import { createGeminiToolStreamAdapter } from '../normalization/geminiToolNormal
 import { getGeminiProviderSettings, updateGeminiProviderSettings } from '../settings';
 import { type GeminiProviderState,getGeminiState } from '../types';
 import { buildGeminiPromptBlocks, buildGeminiPromptText } from './buildGeminiPrompt';
+import { GEMINI_ACP_ARGS, GEMINI_ACP_REQUEST_TIMEOUT_MS } from './geminiAcpLaunch';
 import { buildGeminiRuntimeEnv } from './GeminiRuntimeEnvironment';
 
 interface ActiveTurn {
@@ -535,7 +536,7 @@ export class GeminiChatRuntime implements ChatRuntime {
     };
 
     this.process = new AcpSubprocess({
-      args: ['--acp'],
+      args: [...GEMINI_ACP_ARGS],
       command: params.command,
       cwd: params.cwd,
       env: processEnv,
@@ -546,7 +547,7 @@ export class GeminiChatRuntime implements ChatRuntime {
       input: this.process.stdout,
       onClose: (listener) => this.process!.onClose(listener),
       output: this.process.stdin,
-    });
+    }, GEMINI_ACP_REQUEST_TIMEOUT_MS);
 
     this.connection = new AcpClientConnection({
       clientInfo: {

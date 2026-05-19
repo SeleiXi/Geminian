@@ -48,6 +48,7 @@ export class AcpSubprocess {
 
     const proc = spawn(this.launchSpec.command, this.launchSpec.args, {
       cwd: this.launchSpec.cwd,
+      detached: process.platform !== 'win32',
       env: this.launchSpec.env,
       stdio: 'pipe',
       windowsHide: true,
@@ -98,12 +99,27 @@ export class AcpSubprocess {
 
     await new Promise<void>((resolve) => {
       const proc = this.proc!;
+      const terminate = (signal: NodeJS.Signals): void => {
+        if (process.platform !== 'win32' && proc.pid) {
+          try {
+            process.kill(-proc.pid, signal);
+            return;
+          } catch {
+            // Fall back to killing the direct child only.
+          }
+        }
+        try {
+          proc.kill(signal);
+        } catch {
+          // Process already exited.
+        }
+      };
       const onClose = () => {
         cleanup();
         resolve();
       };
       const killTimer = setTimeout(() => {
-        proc.kill('SIGKILL');
+        terminate('SIGKILL');
       }, SIGKILL_TIMEOUT_MS);
       const cleanup = () => {
         clearTimeout(killTimer);
@@ -111,7 +127,7 @@ export class AcpSubprocess {
       };
 
       proc.once('exit', onClose);
-      proc.kill('SIGTERM');
+      terminate('SIGTERM');
     });
   }
 
