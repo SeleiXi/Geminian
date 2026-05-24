@@ -6,6 +6,11 @@ import type ClaudianPlugin from '../../../main';
 import { getEnhancedPath, parseEnvironmentVariables } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import { getAntigravityProviderSettings } from '../settings';
+import {
+  buildAntigravityCliEnv,
+  resolveAntigravityCliCommand,
+  runAntigravityCliPrint,
+} from './AntigravityCliRunner';
 import { AntigravitySubprocess } from './AntigravitySubprocess';
 
 export class AntigravityAuxQueryRunner implements AuxQueryRunner {
@@ -17,6 +22,35 @@ export class AntigravityAuxQueryRunner implements AuxQueryRunner {
   async query(config: AuxQueryConfig, prompt: string): Promise<string> {
     const settings = getAntigravityProviderSettings(this.plugin.settings as unknown as Record<string, unknown>);
     const workspace = getVaultPath(this.plugin.app) ?? process.cwd();
+    if (settings.backend === 'cli') {
+      const command = resolveAntigravityCliCommand(settings.cliPath);
+      const env = buildAntigravityCliEnv(settings, command);
+      const abortController = config.abortController;
+      let accumulatedText = '';
+      await runAntigravityCliPrint({
+        command,
+        cwd: workspace,
+        env,
+        onStdout: (chunk) => {
+          accumulatedText += chunk;
+          config.onTextChunk?.(accumulatedText);
+        },
+        permissionMode: 'readOnly',
+        prompt: [
+          config.systemPrompt,
+          `Configured workspace path: ${workspace}`,
+          'Return only the requested result.',
+          prompt,
+        ].filter(Boolean).join('\n\n'),
+        signal: abortController?.signal,
+        timeoutMs: 120_000,
+      });
+      if (!accumulatedText.trim()) {
+        throw new Error('Antigravity CLI completed without output. Check ~/.gemini/antigravity-cli/log for authentication, quota, or permission errors.');
+      }
+      return accumulatedText;
+    }
+
     const command = settings.pythonPath.trim() || (process.platform === 'win32' ? 'python' : 'python3');
     const envVars = parseEnvironmentVariables(settings.environmentVariables);
     const env: NodeJS.ProcessEnv = {

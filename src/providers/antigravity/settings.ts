@@ -3,9 +3,12 @@ import { getProviderEnvironmentVariables } from '../../core/providers/providerEn
 
 export type AntigravityWorkspaceMode = 'vault' | 'current-note' | 'custom';
 export type AntigravityPermissionMode = 'readOnly' | 'edit' | 'yolo';
+export type AntigravityBackend = 'sdk' | 'cli';
 
 export interface AntigravityProviderSettings {
   apiKey: string;
+  backend: AntigravityBackend;
+  cliPath: string;
   customWorkspacePath: string;
   enabled: boolean;
   environmentVariables: string;
@@ -18,6 +21,8 @@ export const ANTIGRAVITY_DEFAULT_ENVIRONMENT_VARIABLES = '';
 
 export const DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS: Readonly<AntigravityProviderSettings> = Object.freeze({
   apiKey: '',
+  backend: 'cli',
+  cliPath: '',
   customWorkspacePath: '',
   enabled: false,
   environmentVariables: ANTIGRAVITY_DEFAULT_ENVIRONMENT_VARIABLES,
@@ -25,6 +30,12 @@ export const DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS: Readonly<AntigravityProvider
   pythonPath: '',
   workspaceMode: 'vault',
 });
+
+export function normalizeAntigravityBackend(value: unknown): AntigravityBackend {
+  return value === 'cli' || value === 'sdk'
+    ? value
+    : DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS.backend;
+}
 
 export function normalizeAntigravityWorkspaceMode(value: unknown): AntigravityWorkspaceMode {
   return value === 'current-note' || value === 'custom' || value === 'vault'
@@ -45,6 +56,9 @@ export function getAntigravityProviderSettings(
   return {
     apiKey: (config.apiKey as string | undefined)
       ?? DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS.apiKey,
+    backend: normalizeAntigravityBackend(config.backend),
+    cliPath: (config.cliPath as string | undefined)
+      ?? DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS.cliPath,
     customWorkspacePath: (config.customWorkspacePath as string | undefined)
       ?? DEFAULT_ANTIGRAVITY_PROVIDER_SETTINGS.customWorkspacePath,
     enabled: (config.enabled as boolean | undefined)
@@ -67,12 +81,15 @@ export function updateAntigravityProviderSettings(
   const next: AntigravityProviderSettings = {
     ...current,
     ...updates,
+    backend: normalizeAntigravityBackend(updates.backend ?? current.backend),
     permissionMode: normalizeAntigravityPermissionMode(updates.permissionMode ?? current.permissionMode),
     workspaceMode: normalizeAntigravityWorkspaceMode(updates.workspaceMode ?? current.workspaceMode),
   };
 
   setProviderConfig(settings, 'antigravity', {
     apiKey: next.apiKey,
+    backend: next.backend,
+    cliPath: next.cliPath,
     customWorkspacePath: next.customWorkspacePath,
     enabled: next.enabled,
     environmentVariables: next.environmentVariables,

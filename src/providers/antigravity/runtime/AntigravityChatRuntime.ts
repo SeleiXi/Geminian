@@ -33,6 +33,11 @@ import { expandHomePath, getVaultPath } from '../../../utils/path';
 import { ANTIGRAVITY_PROVIDER_CAPABILITIES } from '../capabilities';
 import { getAntigravityProviderSettings } from '../settings';
 import type { AntigravityBridgeEvent } from './antigravityBridgeProtocol';
+import {
+  checkAntigravityCli,
+  resolveAntigravityCliCommand,
+  runAntigravityCliPrint,
+} from './AntigravityCliRunner';
 import { AntigravitySubprocess } from './AntigravitySubprocess';
 
 class StreamChunkQueue {
@@ -81,6 +86,7 @@ export class AntigravityChatRuntime implements ChatRuntime {
   readonly providerId = 'antigravity' as const;
 
   private activeTurn: ActiveTurn | null = null;
+  private cliAbortController: AbortController | null = null;
   private currentLaunchKey: string | null = null;
   private currentTurnMetadata: ChatTurnMetadata = {};
   private process: AntigravitySubprocess | null = null;
@@ -124,11 +130,28 @@ export class AntigravityChatRuntime implements ChatRuntime {
 
   async reloadMcpServers(): Promise<void> {}
 
-  async ensureReady(_options?: ChatRuntimeEnsureReadyOptions): Promise<boolean> {
+  async ensureReady(options?: ChatRuntimeEnsureReadyOptions): Promise<boolean> {
     const settings = getAntigravityProviderSettings(this.plugin.settings as unknown as Record<string, unknown>);
     if (!settings.enabled) {
       this.setReady(false);
       return false;
+    }
+
+    if (settings.backend === 'cli') {
+      const command = resolveAntigravityCliCommand(settings.cliPath);
+      const env = this.buildRuntimeEnv(command, false);
+      const nextLaunchKey = JSON.stringify({
+        backend: settings.backend,
+        command,
+        envText: getRuntimeEnvironmentText(this.plugin.settings as unknown as Record<string, unknown>, 'antigravity'),
+      });
+      if (this.currentLaunchKey !== nextLaunchKey || options?.force === true || !this.ready) {
+        await this.shutdownProcess();
+        await checkAntigravityCli(command, env);
+        this.currentLaunchKey = nextLaunchKey;
+      }
+      this.setReady(true);
+      return true;
     }
 
     const workspace = await this.resolveWorkspace();
@@ -136,6 +159,7 @@ export class AntigravityChatRuntime implements ChatRuntime {
     const env = this.buildRuntimeEnv(command);
     const nextLaunchKey = JSON.stringify({
       command,
+      backend: settings.backend,
       envText: getRuntimeEnvironmentText(this.plugin.settings as unknown as Record<string, unknown>, 'antigravity'),
     });
     const shouldRestart = !this.process
@@ -183,6 +207,11 @@ export class AntigravityChatRuntime implements ChatRuntime {
     }
 
     if (!this.process) {
+      const settings = getAntigravityProviderSettings(this.plugin.settings as unknown as Record<string, unknown>);
+      if (settings.backend === 'cli') {
+        yield* this.queryCli(turn);
+        return;
+      }
       yield { type: 'error', content: 'Antigravity runtime is not ready.' };
       yield { type: 'done' };
       return;
@@ -242,6 +271,8 @@ export class AntigravityChatRuntime implements ChatRuntime {
 
   cancel(): void {
     const requestId = randomUUID();
+    this.cliAbortController?.abort();
+    this.cliAbortController = null;
     if (this.process?.isAlive()) {
       this.process.send({
         id: requestId,
@@ -327,6 +358,8 @@ export class AntigravityChatRuntime implements ChatRuntime {
 
   private async shutdownProcess(): Promise<void> {
     this.setReady(false);
+    this.cliAbortController?.abort();
+    this.cliAbortController = null;
     this.activeTurn?.queue.close();
     this.activeTurn = null;
     if (this.process) {
@@ -451,16 +484,81 @@ export class AntigravityChatRuntime implements ChatRuntime {
     return 0;
   }
 
-  private buildRuntimeEnv(command: string): NodeJS.ProcessEnv {
+  private async *queryCli(turn: PreparedChatTurn): AsyncGenerator<StreamChunk> {
+    const settings = getAntigravityProviderSettings(this.plugin.settings as unknown as Record<string, unknown>);
+    const command = resolveAntigravityCliCommand(settings.cliPath);
+    const workspace = await this.resolveWorkspace(turn.request);
+    const env = this.buildRuntimeEnv(command, false);
+    const queue = new StreamChunkQueue();
+    const requestId = `cli-${randomUUID()}`;
+    const activeTurn: ActiveTurn = { queue, requestId };
+    const abortController = new AbortController();
+    this.activeTurn?.queue.close();
+    this.activeTurn = activeTurn;
+    this.cliAbortController = abortController;
+    this.sessionId = this.sessionId ?? `antigravity-cli-${randomUUID()}`;
+    this.currentTurnMetadata = { wasSent: true };
+
+    let emittedText = false;
+    const run = runAntigravityCliPrint({
+      command,
+      cwd: workspace,
+      env,
+      onStdout: (chunk) => {
+        emittedText = true;
+        queue.push({ type: 'text', content: chunk });
+      },
+      permissionMode: settings.permissionMode,
+      prompt: this.buildCliPrompt(turn.request, workspace),
+      signal: abortController.signal,
+      timeoutMs: 300_000,
+    }).then((stdout) => {
+      const trimmedStdout = stdout.trim();
+      if (!trimmedStdout) {
+        queue.push({
+          type: 'error',
+          content: 'Antigravity CLI completed without output. Check ~/.gemini/antigravity-cli/log for authentication, quota, or permission errors.',
+        });
+      } else if (!emittedText) {
+        queue.push({ type: 'text', content: stdout });
+      }
+      queue.push({ type: 'done' });
+      queue.close();
+    }).catch((error: unknown) => {
+      queue.push({ type: 'error', content: this.formatError(error) });
+      queue.push({ type: 'done' });
+      queue.close();
+    });
+
+    try {
+      while (true) {
+        const chunk = await queue.next();
+        if (!chunk) {
+          break;
+        }
+        yield chunk;
+      }
+      await run;
+    } finally {
+      if (this.activeTurn === activeTurn) {
+        this.activeTurn = null;
+      }
+      if (this.cliAbortController === abortController) {
+        this.cliAbortController = null;
+      }
+    }
+  }
+
+  private buildRuntimeEnv(command: string, includeApiKey = true): NodeJS.ProcessEnv {
     const settingsBag = this.plugin.settings as unknown as Record<string, unknown>;
     const settings = getAntigravityProviderSettings(settingsBag);
-    const envVars = parseEnvironmentVariables(settings.environmentVariables);
+    const envVars = parseEnvironmentVariables(settings.environmentVariables ?? '');
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ...envVars,
       PATH: getEnhancedPath(envVars.PATH, path.isAbsolute(command) ? command : undefined),
     };
-    if (settings.apiKey.trim() && !env.GEMINI_API_KEY) {
+    if (includeApiKey && settings.apiKey.trim() && !env.GEMINI_API_KEY) {
       env.GEMINI_API_KEY = settings.apiKey.trim();
     }
     return env;
@@ -520,6 +618,15 @@ export class AntigravityChatRuntime implements ChatRuntime {
       parts.push(`Canvas selection context:\n${JSON.stringify(request.canvasSelection)}`);
     }
     return parts.filter(Boolean).join('\n\n');
+  }
+
+  private buildCliPrompt(request: ChatTurnRequest, workspace: string): string {
+    return [
+      this.buildSystemPrompt(),
+      `Configured workspace path: ${workspace}`,
+      'Return the answer directly. Keep tool chatter concise.',
+      this.buildPrompt(request),
+    ].filter(Boolean).join('\n\n');
   }
 
   private formatError(error: unknown): string {

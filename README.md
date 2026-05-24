@@ -8,7 +8,7 @@ Your vault becomes the agent workspace: agents can read files, search notes, edi
 
 ## Highlights
 
-**Antigravity Provider** — Runs the `google-antigravity` Python SDK through a JSONL stdio sidecar. The provider can stream text back into the chat UI and scopes SDK workspace access to your vault, current note folder, or a custom directory.
+**Antigravity Provider** — Runs either the `google-antigravity` Python SDK through a JSONL stdio sidecar or the `agy` CLI through its OAuth login. Both modes scope work to your vault, current note folder, or a custom directory.
 
 **Claude / Codex / Opencode / Gemini CLI Providers** — Keeps the existing provider-neutral runtime from Claudian, including ACP-based Gemini CLI integration.
 
@@ -20,7 +20,22 @@ Your vault becomes the agent workspace: agents can read files, search notes, edi
 
 ## Antigravity Requirements
 
-The Antigravity provider uses the Python package:
+The Antigravity provider has two backends.
+
+### AGY CLI OAuth
+
+Install and authenticate the Antigravity CLI:
+
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+agy --print "hello"
+```
+
+In Obsidian settings, enable **Antigravity**, choose **AGY CLI OAuth**, and set the `agy` executable path if it is not on PATH. This mode reuses the CLI login stored by Antigravity and does not require `GEMINI_API_KEY`.
+
+### SDK Sidecar
+
+The SDK backend uses the Python package:
 
 ```bash
 pip install google-antigravity
@@ -34,7 +49,7 @@ Current SDK notes:
 - Linux x86_64, Linux ARM64, and macOS Apple Silicon are the practical targets for the first release.
 - Windows native and macOS Intel depend on future wheel support; Windows users should prefer WSL for now.
 
-In Obsidian settings, enable **Antigravity**, set the Python executable if needed, and add provider environment variables such as:
+In Obsidian settings, choose **SDK sidecar**, set the Python executable if needed, and add provider environment variables such as:
 
 ```text
 GEMINI_API_KEY=...
@@ -50,7 +65,7 @@ Permission modes:
 
 - `Read only`: conservative SDK tool setup.
 - `Edit files`: file-oriented tools for vault editing.
-- `YOLO`: allow-all SDK policy for fully automated local runs.
+- `YOLO`: allow-all SDK policy or `agy --dangerously-skip-permissions` for fully automated local runs.
 
 ## Installation
 
@@ -118,7 +133,7 @@ Install Gemini CLI. Geminian launches it through ACP mode.
 
 ### Antigravity
 
-Install `google-antigravity` into the Python environment selected in the Antigravity settings tab. Use Linux/WSL or macOS Apple Silicon first while SDK wheel availability is still limited.
+For OAuth login, install and authenticate `agy`, then select **AGY CLI OAuth** in the Antigravity settings tab. For SDK mode, install `google-antigravity` into the selected Python environment. Use Linux/WSL or macOS Apple Silicon first while SDK wheel availability is still limited.
 
 ## Privacy
 

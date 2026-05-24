@@ -33,16 +33,34 @@ def import_antigravity():
 
 
 def build_capabilities(permission_mode: str, CapabilitiesConfig: Any, BuiltinTools: Any) -> Any:
-    if permission_mode == "readOnly" or CapabilitiesConfig is None:
+    if CapabilitiesConfig is None:
         return None
-    if permission_mode == "edit" and BuiltinTools is not None:
-        for name in ("file_tools", "nondestructive"):
-            tool_factory = getattr(BuiltinTools, name, None)
-            if callable(tool_factory):
-                try:
-                    return CapabilitiesConfig(enabled_tools=tool_factory())
-                except TypeError:
-                    pass
+    if permission_mode == "yolo":
+        return None
+    if BuiltinTools is not None:
+        def tool(name: str) -> Any:
+            return getattr(BuiltinTools, name, None)
+
+        read_tools = [
+            tool("LIST_DIR"),
+            tool("SEARCH_DIR"),
+            tool("FIND_FILE"),
+            tool("VIEW_FILE"),
+            tool("ASK_QUESTION"),
+            tool("FINISH"),
+        ]
+        edit_tools = [
+            *read_tools,
+            tool("CREATE_FILE"),
+            tool("EDIT_FILE"),
+        ]
+        selected = read_tools if permission_mode == "readOnly" else edit_tools
+        selected = [item for item in selected if item is not None]
+        if selected:
+            try:
+                return CapabilitiesConfig(enabled_tools=selected, enable_subagents=False)
+            except TypeError:
+                return CapabilitiesConfig(enabled_tools=selected)
     try:
         return CapabilitiesConfig()
     except TypeError:

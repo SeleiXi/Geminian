@@ -1,6 +1,6 @@
 {
   "name": "geminian",
-  "version": "2.1.3",
+  "version": "2.2.0",
   "description": "Geminian - coding agents and Antigravity embedded in Obsidian",
   "main": "main.js",
   "scripts": {

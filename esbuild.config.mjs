@@ -114,6 +114,42 @@ const context = await esbuild.context({
   bundle: true,
   banner: {
     js: `(() => {
+  if (typeof globalThis.Event === 'undefined') {
+    globalThis.Event = class Event {
+      constructor(type, init = {}) {
+        this.type = String(type);
+        this.defaultPrevented = false;
+        this.cancelable = Boolean(init.cancelable);
+      }
+      preventDefault() {
+        if (this.cancelable) this.defaultPrevented = true;
+      }
+    };
+  }
+  if (typeof globalThis.EventTarget === 'undefined') {
+    globalThis.EventTarget = class EventTarget {
+      constructor() {
+        this.__listeners = new Map();
+      }
+      addEventListener(type, listener) {
+        if (!listener) return;
+        const key = String(type);
+        const listeners = this.__listeners.get(key) || new Set();
+        listeners.add(listener);
+        this.__listeners.set(key, listeners);
+      }
+      removeEventListener(type, listener) {
+        this.__listeners.get(String(type))?.delete(listener);
+      }
+      dispatchEvent(event) {
+        for (const listener of this.__listeners.get(String(event.type)) || []) {
+          if (typeof listener === 'function') listener.call(this, event);
+          else listener?.handleEvent?.(event);
+        }
+        return !event.defaultPrevented;
+      }
+    };
+  }
   try {
     const webStreams = require('stream/web');
     for (const name of ['ReadableStream', 'WritableStream', 'TransformStream', 'TextEncoderStream', 'TextDecoderStream']) {
@@ -122,6 +158,20 @@ const context = await esbuild.context({
       }
     }
   } catch (_) {}
+  if (typeof globalThis.TransformStream === 'undefined') {
+    globalThis.TransformStream = class TransformStream {
+      constructor() {
+        this.readable = undefined;
+        this.writable = undefined;
+      }
+    };
+  }
+  if (typeof globalThis.ReadableStream === 'undefined') {
+    globalThis.ReadableStream = class ReadableStream {};
+  }
+  if (typeof globalThis.WritableStream === 'undefined') {
+    globalThis.WritableStream = class WritableStream {};
+  }
 })();`,
   },
   plugins: [patchCodexSdkImportMeta, patchRendererUnsafeUnref, copyToObsidian],

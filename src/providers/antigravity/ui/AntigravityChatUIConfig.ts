@@ -11,7 +11,7 @@ export const ANTIGRAVITY_MODEL_ID = 'antigravity/gemini';
 
 const ANTIGRAVITY_MODELS: ProviderUIOption[] = [
   {
-    description: 'Google Antigravity SDK sidecar',
+    description: 'Google Antigravity SDK or AGY CLI OAuth',
     label: 'Antigravity',
     value: ANTIGRAVITY_MODEL_ID,
   },
