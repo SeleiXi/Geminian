@@ -1,190 +1,178 @@
-# Claudian
+# Geminian
 
-![GitHub stars](https://img.shields.io/github/stars/YishenTu/claudian?style=social)
-![GitHub release](https://img.shields.io/github/v/release/YishenTu/claudian)
-![License](https://img.shields.io/github/license/YishenTu/claudian)
+![GitHub release](https://img.shields.io/github/v/release/SeleiXi/Geminian)
+![License](https://img.shields.io/github/license/SeleiXi/Geminian)
 
 ![Preview](Preview.png)
 
-An Obsidian plugin that embeds AI coding agents (Claude Code, Codex, Opencode, Gemini CLI and more to come) in your vault. Your vault becomes the agent's working directory — file read/write, search, bash, and multi-step workflows all work out of the box.
+Geminian is an Obsidian desktop plugin that embeds coding agents directly in your vault. It is based on Claudian and adds an experimental Google Antigravity provider alongside Claude Code, Codex, Opencode, and Gemini CLI support.
 
-## Features & Usage
+Your vault becomes the agent workspace: agents can read files, search notes, edit Markdown, run approved commands, and handle multi-step workflows without leaving Obsidian.
 
-Open the chat sidebar from the ribbon icon or command palette. Select text and use the hotkey for inline edit. Everything works like your familiar coding agent, Claude Code, Codex, Opencode and Gemini CLI — talk to the agent, and it reads, writes, edits, and searches files in your vault.
+## Highlights
 
-**Inline Edit** — Select text or start at the cursor position + hotkey to edit directly in notes with word-level diff preview.
+**Antigravity Provider** — Runs the `google-antigravity` Python SDK through a JSONL stdio sidecar. The provider can stream text back into the chat UI and scopes SDK workspace access to your vault, current note folder, or a custom directory.
 
-**Slash Commands & Skills** — Type `/` or `$` for reusable prompt templates or Skills from user- and vault-level scopes.
+**Claude / Codex / Opencode / Gemini CLI Providers** — Keeps the existing provider-neutral runtime from Claudian, including ACP-based Gemini CLI integration.
 
-**`@mention`** - Type `@` to mention anything you want the agent to work with, vault files, subagents, MCP servers, or files in external directories.
+**Inline Edit** — Select text or place the cursor in a note, then invoke inline edit for provider-backed Markdown edits with preview.
 
-**Plan Mode** — Toggle via `Shift+Tab`. The agent explores and designs before implementing, then presents a plan for approval.
+**Slash Commands, Skills, and Mentions** — Use `/`, `$`, and `@` to invoke reusable prompts, skills, files, agents, MCP servers, and external context paths.
 
-**Instruction Mode (`#`)** — Refined custom instructions added from the chat input.
+**Multi-Tab Conversations** — Keep separate chat sessions, history, resumes, forks, compaction, and provider-specific session state.
 
-**MCP Servers** — Connect external tools via Model Context Protocol (stdio, SSE, HTTP). Claude manages vault MCP in-app; Codex uses its own CLI-managed MCP configuration.
+## Antigravity Requirements
 
-**Multi-Tab & Conversations** — Multiple chat tabs, conversation history, fork, resume, and compact.
+The Antigravity provider uses the Python package:
 
-## Requirements
+```bash
+pip install google-antigravity
+```
 
-- **Claude provider**: [Claude Code CLI](https://code.claude.com/docs/en/overview) installed (native install recommended). Claude subscription/API or compatible provider ([Openrouter](https://openrouter.ai/docs/guides/guides/claude-code-integration), [Kimi](https://platform.moonshot.ai/docs/guide/agent-support), etc.).
-- **Optional providers**: [Codex CLI](https://github.com/openai/codex), [Opencode](https://opencode.ai/), [Gemini CLI](https://github.com/google-gemini/gemini-cli).
-- Obsidian v1.4.5+
-- Desktop only (macOS, Linux, Windows)
+Current SDK notes:
+
+- Requires Python 3.10+.
+- The SDK is early Alpha (`google-antigravity 0.1.0` at initial integration time).
+- The package must be installed from PyPI because it ships a compiled runtime binary in the wheel.
+- Linux x86_64, Linux ARM64, and macOS Apple Silicon are the practical targets for the first release.
+- Windows native and macOS Intel depend on future wheel support; Windows users should prefer WSL for now.
+
+In Obsidian settings, enable **Antigravity**, set the Python executable if needed, and add provider environment variables such as:
+
+```text
+GEMINI_API_KEY=...
+```
+
+The Antigravity provider supports these workspace modes:
+
+- `Vault`: pass the full vault path to the SDK.
+- `Current note folder`: limit the workspace to the current note's folder.
+- `Custom path`: pass an explicit local directory.
+
+Permission modes:
+
+- `Read only`: conservative SDK tool setup.
+- `Edit files`: file-oriented tools for vault editing.
+- `YOLO`: allow-all SDK policy for fully automated local runs.
 
 ## Installation
 
-### From GitHub Release (recommended)
+### BRAT
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/YishenTu/claudian/releases/latest)
-2. Create a folder called `claudian` in your vault's plugins folder:
-   ```
-   /path/to/vault/.obsidian/plugins/claudian/
-   ```
-3. Copy the downloaded files into the `claudian` folder
-4. Enable the plugin in Obsidian:
-   - Settings → Community plugins → Enable "Claudian"
+Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then add this beta plugin repository:
 
-### Using BRAT
+```text
+https://github.com/SeleiXi/Geminian
+```
 
-[BRAT](https://github.com/TfTHacker/obsidian42-brat) (Beta Reviewers Auto-update Tester) allows you to install and automatically update plugins directly from GitHub.
+If this repository is private, configure a GitHub token in BRAT's private repository settings first.
 
-1. Install the BRAT plugin from Obsidian Community Plugins
-2. Enable BRAT in Settings → Community plugins
-3. Open BRAT settings and click "Add Beta plugin"
-4. Enter the repository URL: `https://github.com/YishenTu/claudian`
-5. Click "Add Plugin" and BRAT will install Claudian automatically
-6. Enable Claudian in Settings → Community plugins
+BRAT installs from the latest GitHub release. The release assets include:
 
-> **Tip**: BRAT will automatically check for updates and notify you when a new version is available.
+- `manifest.json`
+- `main.js`
+- `styles.css`
 
-### From source (development)
+### Manual Release Install
 
-1. Clone this repository into your vault's plugins folder:
-   ```bash
-   cd /path/to/vault/.obsidian/plugins
-   git clone https://github.com/YishenTu/claudian.git
-   cd claudian
-   ```
+1. Download `manifest.json`, `main.js`, and `styles.css` from the latest release.
+2. Create this folder in your vault:
 
-2. Install dependencies and build:
-   ```bash
-   npm install
-   npm run build
-   ```
+```text
+/path/to/vault/.obsidian/plugins/geminian/
+```
 
-3. Enable the plugin in Obsidian:
-   - Settings → Community plugins → Enable "Claudian"
+3. Copy the three files into that folder.
+4. Restart Obsidian or reload plugins.
+5. Enable **Geminian** in Settings -> Community plugins.
 
 ### Development
 
 ```bash
-# Watch mode
-npm run dev
-
-# Production build
+npm install
 npm run build
 ```
 
-> **Tip**: Copy `.env.local.example` to `.env.local` or `npm install` and setup your vault path to auto-copy files during development.
+For watch mode:
 
-## Privacy & Data Use
-
-- **Sent to API**: Your input, attached files, images, and tool call outputs. Default: Anthropic (Claude) or OpenAI (Codex); configurable via environment variables.
-- **Local storage**: Claudian settings and session metadata in `vault/.claudian/`; Claude provider files in `vault/.claude/`; transcripts in `~/.claude/projects/` (Claude) and `~/.codex/sessions/` (Codex).
-- **No telemetry**: No tracking beyond your configured API provider.
-
-## Troubleshooting
-
-### Claude CLI not found
-
-If you encounter `spawn claude ENOENT` or `Claude CLI not found`, the plugin can't auto-detect your Claude installation. Common with Node version managers (nvm, fnm, volta).
-
-**Solution**: Leave the setting empty first so Claudian can auto-detect Claude Code. If auto-detection fails, find your CLI path and set it in Settings → Advanced → Claude CLI path.
-
-| Platform | Command | Example Path |
-|----------|---------|--------------|
-| macOS/Linux | `which claude` | `/Users/you/.volta/bin/claude` |
-| Windows (native) | `where.exe claude` | `C:\Users\you\AppData\Local\Claude\claude.exe` |
-| Windows (npm) | `npm root -g` | `{root}\@anthropic-ai\claude-code\cli-wrapper.cjs` |
-
-> **Note**: On Windows, avoid `.cmd` and `.ps1` wrappers. Use `claude.exe` for native installs, or `cli-wrapper.cjs` for package-manager installs. `cli.js` is only a legacy fallback for older Claude Code npm packages.
-
-**Alternative**: Add your Node.js bin directory to PATH in Settings → Environment → Custom variables.
-
-### npm CLI and Node.js not in same directory
-
-If using npm-installed CLI, check if `claude` and `node` are in the same directory:
 ```bash
-dirname $(which claude)
-dirname $(which node)
+npm run dev
 ```
 
-If different, GUI apps like Obsidian may not find Node.js.
+Set `OBSIDIAN_VAULT` in `.env.local` to auto-copy built files into a development vault.
 
-**Solutions**:
-1. Install native binary (recommended)
-2. Add Node.js path to Settings → Environment: `PATH=/path/to/node/bin`
+## Provider Setup
 
-### Other providers
+### Claude
 
-Codex and Opencode support are live but features might be incomplete, and still need more testing across platforms and installation methods. If you have feature request or run into any bugs, please [submit a GitHub issue](https://github.com/YishenTu/claudian/issues).
+Install Claude Code and configure the Claude provider in settings. Native Claude Code installs are preferred over shell wrappers.
+
+### Codex
+
+Install Codex CLI and configure any required OpenAI environment variables in the provider settings.
+
+### Opencode
+
+Install Opencode and configure its provider settings.
+
+### Gemini CLI
+
+Install Gemini CLI. Geminian launches it through ACP mode.
+
+### Antigravity
+
+Install `google-antigravity` into the Python environment selected in the Antigravity settings tab. Use Linux/WSL or macOS Apple Silicon first while SDK wheel availability is still limited.
+
+## Privacy
+
+Geminian sends prompts, selected context, and tool results to whichever provider you enable. Local settings and sessions live in your vault and in each provider's normal local storage. No additional telemetry is added by Geminian.
 
 ## Architecture
 
-```
+```text
 src/
-├── main.ts                      # Plugin entry point
-├── app/                         # Shared defaults and plugin-level storage
-├── core/                        # Provider-neutral runtime, registry, and type contracts
-│   ├── runtime/                 # ChatRuntime interface and approval types
-│   ├── providers/               # Provider registry and workspace services
-│   ├── auxiliary/               # Shared provider auxiliary services
-│   ├── bootstrap/               # Plugin bootstrap wiring
-│   ├── security/                # Approval utilities
-│   └── ...                      # commands, mcp, prompt, storage, tools, types
+├── main.ts
+├── app/
+├── core/
+│   ├── runtime/
+│   ├── providers/
+│   ├── auxiliary/
+│   └── ...
 ├── providers/
-│   ├── claude/                  # Claude SDK adaptor, prompt encoding, storage, MCP, plugins
-│   ├── codex/                   # Codex app-server adaptor, JSON-RPC transport, JSONL history
-│   ├── opencode/                # Opencode adaptor
-│   ├── gemini/                  # Gemini CLI ACP adaptor
-│   └── acp/                     # Agent Client Protocol shared transport
+│   ├── antigravity/   # Python SDK sidecar provider
+│   ├── claude/
+│   ├── codex/
+│   ├── gemini/
+│   ├── opencode/
+│   └── acp/
 ├── features/
-│   ├── chat/                    # Sidebar chat: tabs, controllers, renderers
-│   ├── inline-edit/             # Inline edit modal and provider-backed edit services
-│   └── settings/                # Settings shell with provider tabs
-├── shared/                      # Reusable UI components and modals
-├── i18n/                        # Internationalization (10 locales)
-├── types/                       # Shared ambient types
-├── utils/                       # Cross-cutting utilities
-└── style/                       # Modular CSS
+├── shared/
+├── i18n/
+└── style/
 ```
 
-## Roadmap
+## Release Checklist
 
-- [x] 1M Opus and Sonnet models
-- [x] Codex provider integration
-- [x] Opencode support
-- [ ] More to come!
+Before publishing a release:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm test
+```
+
+Then create a GitHub release whose tag matches the version in `manifest.json`, with `main.js`, `manifest.json`, and `styles.css` attached.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=YishenTu%2Fclaudian&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=YishenTu/claudian&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=YishenTu/claudian&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=YishenTu/claudian&type=date&legend=top-left" />
- </picture>
-</a>
+MIT. See [LICENSE](LICENSE).
 
 ## Acknowledgments
 
-- [Obsidian](https://obsidian.md) for the plugin API
-- [Anthropic](https://anthropic.com) for Claude and the [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview)
-- [OpenAI](https://openai.com) for [Codex](https://github.com/openai/codex)
-- [Opencode](https://opencode.ai/) 
+- Original Claudian project by Yishen Tu.
+- Obsidian for the plugin API.
+- Anthropic for Claude and Claude Agent SDK.
+- OpenAI for Codex.
+- Google for Gemini CLI and Antigravity SDK.
+- Opencode for Opencode.
