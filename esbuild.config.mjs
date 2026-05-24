@@ -112,6 +112,18 @@ const copyToObsidian = {
 const context = await esbuild.context({
   entryPoints: ['src/main.ts'],
   bundle: true,
+  banner: {
+    js: `(() => {
+  try {
+    const webStreams = require('stream/web');
+    for (const name of ['ReadableStream', 'WritableStream', 'TransformStream', 'TextEncoderStream', 'TextDecoderStream']) {
+      if (typeof globalThis[name] === 'undefined' && typeof webStreams[name] !== 'undefined') {
+        globalThis[name] = webStreams[name];
+      }
+    }
+  } catch (_) {}
+})();`,
+  },
   plugins: [patchCodexSdkImportMeta, patchRendererUnsafeUnref, copyToObsidian],
   external: [
     'obsidian',

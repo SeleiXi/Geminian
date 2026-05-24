@@ -1,7 +1,7 @@
 {
   "id": "geminian",
   "name": "Geminian",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "minAppVersion": "1.4.5",
   "description": "Embeds coding agents in your Obsidian vault, including an experimental Google Antigravity SDK provider.",
   "author": "SeleiXi",

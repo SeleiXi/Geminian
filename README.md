@@ -1,9 +1,6 @@
 # Geminian
 
 ![GitHub release](https://img.shields.io/github/v/release/SeleiXi/Geminian)
-![License](https://img.shields.io/github/license/SeleiXi/Geminian)
-
-![Preview](Preview.png)
 
 Geminian is an Obsidian desktop plugin that embeds coding agents directly in your vault. It is a modified distribution based on [Claudian](https://github.com/YishenTu/claudian) and adds an experimental Google Antigravity provider alongside Claude Code, Codex, Opencode, and Gemini CLI support.
 
