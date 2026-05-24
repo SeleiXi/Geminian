@@ -59,7 +59,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
     if (isWindowsHost) {
       new Setting(container)
         .setName('Installation method')
-        .setDesc('How Claudian should launch Codex on Windows. Native Windows uses a Windows executable path. WSL launches the Linux CLI inside a selected distro.')
+        .setDesc('How Geminian should launch Codex on Windows. Native Windows uses a Windows executable path. WSL launches the Linux CLI inside a selected distro.')
         .addDropdown((dropdown) => {
           dropdown
             .addOption('native-windows', 'Native Windows')
@@ -414,7 +414,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
     const mcpDesc = mcpNotice.createEl('p', { cls: 'setting-item-description' });
     mcpDesc.appendText('Codex manages MCP servers via its own CLI. Configure with ');
     mcpDesc.createEl('code', { text: 'codex mcp' });
-    mcpDesc.appendText(' and they will be available in Claudian. ');
+    mcpDesc.appendText(' and they will be available in Geminian. ');
     mcpDesc.createEl('a', {
       text: 'Learn more',
       href: 'https://developers.openai.com/codex/mcp',

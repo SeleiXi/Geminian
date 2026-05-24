@@ -71,7 +71,7 @@ def make_config(req: dict[str, Any]) -> Any:
     kwargs: dict[str, Any] = {
         "workspaces": [req["workspace"]],
         "system_instructions": req.get("systemPrompt") or (
-            "You are running inside an Obsidian vault through Claudian. "
+            "You are running inside an Obsidian vault through Geminian. "
             "Treat the workspace as the user's vault. Prefer careful Markdown edits."
         ),
     }

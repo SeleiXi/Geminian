@@ -445,7 +445,7 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       if (filtered.length === 0) {
         const emptyEl = listEl.createDiv({ cls: 'claudian-opencode-model-picker-empty' });
         emptyEl.setText(enriched.length === 0
-          ? 'Start OpenCode once to load its model catalog. Claudian will then let you pick visible models.'
+          ? 'Start OpenCode once to load its model catalog. Geminian will then let you pick visible models.'
           : 'No models match your filter.');
         return;
       }

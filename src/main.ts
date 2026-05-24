@@ -62,7 +62,7 @@ export default class ClaudianPlugin extends Plugin {
 
     this.registerStartupProviderWarmup();
 
-    this.addRibbonIcon('bot', 'Open Claudian', () => {
+    this.addRibbonIcon('bot', 'Open Geminian', () => {
       this.activateView();
     });
 

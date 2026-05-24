@@ -495,7 +495,7 @@ export class AntigravityChatRuntime implements ChatRuntime {
   private buildSystemPrompt(): string {
     const userName = this.plugin.settings.userName?.trim();
     return [
-      'You are running inside an Obsidian vault through Claudian.',
+      'You are running inside an Obsidian vault through Geminian.',
       'Treat the configured workspace as the vault boundary.',
       'Prefer precise Markdown edits and explain file changes briefly.',
       userName ? `The user name is ${userName}.` : '',

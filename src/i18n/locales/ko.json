@@ -65,7 +65,7 @@
     }
   },
   "settings": {
-    "title": "Claudian 설정",
+    "title": "Geminian 설정",
     "tabs": {
       "general": "일반",
       "claude": "Claude",
@@ -79,7 +79,7 @@
     "models": "모델",
     "experimental": "실험적 기능",
     "userName": {
-      "name": "Claudian이 당신을 어떻게 불러야 합니까?",
+      "name": "Geminian이 당신을 어떻게 불러야 합니까?",
       "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"
     },
     "excludedTags": {
@@ -149,7 +149,7 @@
     },
     "hiddenSlashCommands": {
       "name": "숨겨진 명령어와 스킬",
-      "desc": "드롭다운에서 특정 명령어와 스킬을 숨깁니다. Claudian과 관련 없는 Claude Code 항목을 숨기는 데 유용합니다. 앞의 슬래시 없이 이름을 한 줄에 하나씩 입력하세요.",
+      "desc": "드롭다운에서 특정 명령어와 스킬을 숨깁니다. Geminian과 관련 없는 Claude Code 항목을 숨기는 데 유용합니다. 앞의 슬래시 없이 이름을 한 줄에 하나씩 입력하세요.",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -284,7 +284,7 @@
       "desc": "응답이 스트리밍되는 동안 원본 LaTeX를 표시하고 각 텍스트 블록이 완료되면 수식을 한 번 렌더링합니다."
     },
     "chatViewPlacement": {
-      "name": "Claudian 열 위치",
+      "name": "Geminian 열 위치",
       "desc": "채팅 패널이 생성될 때 열릴 위치를 선택합니다",
       "rightSidebar": "오른쪽 사이드바",
       "leftSidebar": "왼쪽 사이드바",

@@ -605,7 +605,7 @@ export class GeminiChatRuntime implements ChatRuntime {
         }
       }
 
-      console.error('[Claudian] Gemini Initialization Error:', diagnostic, error);
+      console.error('[Geminian] Gemini Initialization Error:', diagnostic, error);
       throw new Error(diagnostic, { cause: error });
     }
     this.setReady(true);

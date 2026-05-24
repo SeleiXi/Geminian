@@ -45,7 +45,7 @@ function openHotkeySettings(app: App): void {
       return;
     }
 
-    searchEl.value = 'Claudian';
+    searchEl.value = 'Geminian';
     tab.updateHotkeyVisibility?.();
   }, 100);
 }

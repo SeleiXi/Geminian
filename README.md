@@ -5,7 +5,7 @@
 
 ![Preview](Preview.png)
 
-Geminian is an Obsidian desktop plugin that embeds coding agents directly in your vault. It is based on Claudian and adds an experimental Google Antigravity provider alongside Claude Code, Codex, Opencode, and Gemini CLI support.
+Geminian is an Obsidian desktop plugin that embeds coding agents directly in your vault. It is a modified distribution based on [Claudian](https://github.com/YishenTu/claudian) and adds an experimental Google Antigravity provider alongside Claude Code, Codex, Opencode, and Gemini CLI support.
 
 Your vault becomes the agent workspace: agents can read files, search notes, edit Markdown, run approved commands, and handle multi-step workflows without leaving Obsidian.
 
@@ -168,9 +168,11 @@ Then create a GitHub release whose tag matches the version in `manifest.json`, w
 
 MIT. See [LICENSE](LICENSE).
 
+Geminian keeps the original Claudian MIT copyright notice and adds SeleiXi's copyright notice for this modified distribution.
+
 ## Acknowledgments
 
-- Original Claudian project by Yishen Tu.
+- Original Claudian project by [Yishen Tu](https://github.com/YishenTu/claudian).
 - Obsidian for the plugin API.
 - Anthropic for Claude and Claude Agent SDK.
 - OpenAI for Codex.

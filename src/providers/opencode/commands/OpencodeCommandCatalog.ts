@@ -71,11 +71,11 @@ export class OpencodeCommandCatalog implements ProviderCommandCatalog {
   }
 
   async saveVaultEntry(_entry: ProviderCommandEntry): Promise<void> {
-    throw new Error('OpenCode runtime commands are not editable from Claudian.');
+    throw new Error('OpenCode runtime commands are not editable from Geminian.');
   }
 
   async deleteVaultEntry(_entry: ProviderCommandEntry): Promise<void> {
-    throw new Error('OpenCode runtime commands are not deletable from Claudian.');
+    throw new Error('OpenCode runtime commands are not deletable from Geminian.');
   }
 
   getDropdownConfig(): ProviderCommandDropdownConfig {
