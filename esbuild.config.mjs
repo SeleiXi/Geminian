@@ -60,7 +60,15 @@ const patchRendererUnsafeUnref = {
         await fsPromises.writeFile(bundlePath, patchedBundle.contents, 'utf8');
       }
 
-      const unsafeMatches = findUnsafeTimerUnrefSites(patchedBundle.contents);
+      const nodeProtocolPatchedBundle = patchedBundle.contents.replace(
+        /require\("node:([^"]+)"\)/g,
+        'require("$1")',
+      );
+      if (nodeProtocolPatchedBundle !== patchedBundle.contents) {
+        await fsPromises.writeFile(bundlePath, nodeProtocolPatchedBundle, 'utf8');
+      }
+
+      const unsafeMatches = findUnsafeTimerUnrefSites(nodeProtocolPatchedBundle);
       if (unsafeMatches.length > 0) {
         const details = unsafeMatches
           .slice(0, 5)
@@ -78,7 +86,7 @@ const patchRendererUnsafeUnref = {
 // Obsidian plugin folder path (set via OBSIDIAN_VAULT env var or .env.local)
 const OBSIDIAN_VAULT = process.env.OBSIDIAN_VAULT;
 const OBSIDIAN_PLUGIN_PATH = OBSIDIAN_VAULT && existsSync(OBSIDIAN_VAULT)
-  ? path.join(OBSIDIAN_VAULT, '.obsidian', 'plugins', 'claudian')
+  ? path.join(OBSIDIAN_VAULT, '.obsidian', 'plugins', 'geminian')
   : null;
 
 // Plugin to copy built files to Obsidian plugin folder
